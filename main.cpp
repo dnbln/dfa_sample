@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "parse.hpp"
 #include "dfg_analysis.hpp"
 #include "dfg.hpp"
@@ -28,6 +29,10 @@ int main() {
 
     DfgNodeUnusedAssignments unused_assignments;
     analyse_dfg(dfg, outputs, unused_assignments);
+    std::sort(unused_assignments.assignments.begin(), unused_assignments.assignments.end(),
+              [](const auto &a, const auto &b) {
+                  return a->span.start < b->span.start;
+              });
     for (const auto &assignment: unused_assignments.assignments) {
         std::cout << "Unused assignment " << assignment->name.name << " at " << assignment->span.start << ".."
                   << assignment->span.end
