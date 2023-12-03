@@ -4,24 +4,14 @@
 #include "dfg.hpp"
 
 std::string SRC = R"(
-a = 1
-b = a
-x = 3
-y = 4
-
-while (b < 5)
-  z = x
-  b = b + 1
-  x = 9
-  y = 10
-end
+a = 1 + 2 * 3 + 4 * 5 > 6 * 7 + 8 * 9 * 10 / 11 > 12 * 13 + 14 / 15 * 16
 )";
 
 int main() {
     ParserState state{Lexer{SRC}};
     Program p = parse_program(state);
     Cfg cfg = build_cfg(p);
-//    dbg_cfg(cfg);
+    dbg_cfg(cfg);
     Dfg dfg = build_dfg(cfg);
 //    dbg_dfg(dfg);
     DfgNodeOutputs outputs;

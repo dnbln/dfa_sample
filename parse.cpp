@@ -57,11 +57,11 @@ std::shared_ptr<Expr> parse_precedence_1(ParserState &state) {
     }
 
     char c = state.lexer.peek();
-    if (c == '*' || c == '/') {
+    while (c == '*' || c == '/') {
         auto start = state.lexer.pos;
         state.lexer.next();
         std::shared_ptr<Expr> rhs = std::make_shared<Expr>(parse_expr_atom(state));
-        return std::make_shared<Expr>(Expr{
+        lhs = std::make_shared<Expr>(Expr{
                 .data = BinaryExpr{
                         .lhs = lhs,
                         .rhs = rhs,
@@ -69,9 +69,13 @@ std::shared_ptr<Expr> parse_precedence_1(ParserState &state) {
                         .span = Span{start, state.lexer.pos}
                 }
         });
-    } else {
-        return lhs;
+        state.lexer.skip_whitespace();
+        if (state.lexer.eof()) {
+            break;
+        }
+        c = state.lexer.peek();
     }
+    return lhs;
 }
 
 std::shared_ptr<Expr> parse_precedence_2(ParserState &state) {
@@ -83,11 +87,11 @@ std::shared_ptr<Expr> parse_precedence_2(ParserState &state) {
     }
 
     char c = state.lexer.peek();
-    if (c == '+' || c == '-') {
+    while (c == '+' || c == '-') {
         auto start = state.lexer.pos;
         state.lexer.next();
         std::shared_ptr<Expr> rhs = parse_precedence_1(state);
-        return std::make_shared<Expr>(Expr{
+        lhs = std::make_shared<Expr>(Expr{
                 .data = BinaryExpr{
                         .lhs = std::move(lhs),
                         .rhs = std::move(rhs),
@@ -95,9 +99,13 @@ std::shared_ptr<Expr> parse_precedence_2(ParserState &state) {
                         .span = Span{start, state.lexer.pos}
                 }
         });
-    } else {
-        return lhs;
+        state.lexer.skip_whitespace();
+        if (state.lexer.eof()) {
+            break;
+        }
+        c = state.lexer.peek();
     }
+    return lhs;
 }
 
 std::shared_ptr<Expr> parse_precedence_3(ParserState &state) {
@@ -109,11 +117,11 @@ std::shared_ptr<Expr> parse_precedence_3(ParserState &state) {
     }
 
     char c = state.lexer.peek();
-    if (c == '<' || c == '>') {
+    while (c == '<' || c == '>') {
         auto start = state.lexer.pos;
         state.lexer.next();
         std::shared_ptr<Expr> rhs = parse_precedence_2(state);
-        return std::make_shared<Expr>(Expr{
+        lhs = std::make_shared<Expr>(Expr{
                 .data = BinaryExpr{
                         .lhs = std::move(lhs),
                         .rhs = std::move(rhs),
@@ -121,9 +129,13 @@ std::shared_ptr<Expr> parse_precedence_3(ParserState &state) {
                         .span = Span{start, state.lexer.pos}
                 }
         });
-    } else {
-        return lhs;
+        state.lexer.skip_whitespace();
+        if (state.lexer.eof()) {
+            break;
+        }
+        c = state.lexer.peek();
     }
+    return lhs;
 }
 
 std::shared_ptr<Expr> parse_expr(ParserState &state) {

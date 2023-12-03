@@ -19,7 +19,7 @@ struct AnalyseDfgContext {
     DfgNodeUnusedAssignments &unused_assignments;
     std::vector<std::shared_ptr<DfgNode>> &work_list;
     std::set<DfgNode *> &visited;
-    std::map<DfgNode *, DfgNodeInout> *inouts;
+    std::map<DfgNode *, DfgNodeInout> &inouts;
 };
 
 static void analyse_dfg_impl(AnalyseDfgContext &context);
@@ -117,21 +117,22 @@ compute_dfg_node_inputs_for_while(const std::shared_ptr<WhileCfgNode> &while_nod
     InputsReadVisitor visitor;
     visitor.visit_expr(*while_node->condition);
     required_inputs.in.insert(visitor.inputs.begin(), visitor.inputs.end());
-    (*new_context.inouts).insert_or_assign(end_node.get(), DfgNodeInout{.inputs = required_inputs, .outputs = context.outputs});
+    new_context.inouts.insert_or_assign(end_node.get(),
+                                        DfgNodeInout{.inputs = required_inputs, .outputs = context.outputs});
 
 //    std::cout << "Before:\n";
 //    dbg_inouts(end_node, (*new_context.inouts)[end_node.get()]);
 
     analyse_dfg_impl(new_context);
-    auto local = (*new_context.inouts)[dfg_ptr_for_cfg(context.dfg, *while_node->body).get()];
+    auto local = new_context.inouts[dfg_ptr_for_cfg(context.dfg, *while_node->body).get()];
     wl = init_wl;
     local.inputs.in.insert(visitor.inputs.begin(), visitor.inputs.end());
     vis = context.visited;
-    (*new_context.inouts).insert_or_assign(end_node.get(), local);
+    new_context.inouts.insert_or_assign(end_node.get(), local);
 //    std::cout << "Before2:\n";
 //    dbg_inouts(end_node, (*new_context.inouts)[end_node.get()]);
     analyse_dfg_impl(new_context);
-    local = (*new_context.inouts)[dfg_ptr_for_cfg(context.dfg, *while_node->body).get()];
+    local = new_context.inouts[dfg_ptr_for_cfg(context.dfg, *while_node->body).get()];
     local.inputs.in.insert(visitor.inputs.begin(), visitor.inputs.end());
 //    std::cout << "After:\n";
 //    for (const auto &c: local.inputs.in) {
@@ -142,8 +143,7 @@ compute_dfg_node_inputs_for_while(const std::shared_ptr<WhileCfgNode> &while_nod
 }
 
 static DfgNodeInputs
-compute_dfg_node_inputs_for_if(const IfCfgNode &if_node, const DfgNodeOutputs &outputs,
-                               DfgNodeUnusedAssignments &unused_assignments) {
+compute_dfg_node_inputs_for_if(const IfCfgNode &if_node, const DfgNodeOutputs &outputs) {
     DfgNodeInputs required_inputs = DfgNodeInputs{.in = outputs.out};
     InputsReadVisitor visitor;
     visitor.visit_expr(*if_node.condition);
@@ -174,7 +174,7 @@ next_work_list_node(std::vector<std::shared_ptr<DfgNode>> &work_list, const std:
         throw std::runtime_error("Work list empty");
     }
 
-    for (size_t i = 0; i < work_list.size(); i++) {
+    for (int i = 0; i < work_list.size(); i++) {
         std::shared_ptr<DfgNode> node_candidate = work_list[i];
 
         bool good = true;
@@ -207,7 +207,7 @@ static void analyse_dfg_impl(AnalyseDfgContext &context) {
 
         DfgNodeOutputs required_outputs;
         for (const auto &out_node: node->out_nodes) {
-            auto it = (*context.inouts)[out_node.lock().get()];
+            auto it = context.inouts[out_node.lock().get()];
             required_outputs.out.insert(it.inputs.in.begin(), it.inputs.in.end());
         }
 
@@ -218,7 +218,8 @@ static void analyse_dfg_impl(AnalyseDfgContext &context) {
             if constexpr (std::is_same_v<T, BasicCfgBlock>) {
                 DfgNodeInputs inputs = compute_dfg_node_inputs(cfg_node, required_outputs,
                                                                context.unused_assignments);
-                (*context.inouts).insert_or_assign(node.get(), DfgNodeInout{.inputs = inputs, .outputs = required_outputs});
+                context.inouts.insert_or_assign(node.get(),
+                                                DfgNodeInout{.inputs = inputs, .outputs = required_outputs});
             } else if constexpr (std::is_same_v<T, std::shared_ptr<WhileCfgNode>>) {
                 AnalyseDfgContext while_context = context;
                 while_context.outputs = required_outputs;
@@ -226,8 +227,8 @@ static void analyse_dfg_impl(AnalyseDfgContext &context) {
                         cfg_node,
                         node->cfg_node,
                         context);
-                (*context.inouts).insert_or_assign(node.get(),
-                                                   DfgNodeInout{.inputs = inputs, .outputs = required_outputs});
+                context.inouts.insert_or_assign(node.get(),
+                                                DfgNodeInout{.inputs = inputs, .outputs = required_outputs});
                 auto end = dfg_ptr_for_while_end_dummy_node(context.dfg, node->cfg_node);
                 for (const auto &in_node: node->in_nodes) {
                     auto locked = in_node.lock();
@@ -240,13 +241,12 @@ static void analyse_dfg_impl(AnalyseDfgContext &context) {
             } else if constexpr (std::is_same_v<T, IfCfgNode>) {
                 DfgNodeInputs inputs = compute_dfg_node_inputs_for_if(
                         cfg_node,
-                        required_outputs,
-                        context.unused_assignments);
-                (*context.inouts).insert_or_assign(node.get(),
-                                                   DfgNodeInout{.inputs = inputs, .outputs = required_outputs});
+                        required_outputs);
+                context.inouts.insert_or_assign(node.get(),
+                                                DfgNodeInout{.inputs = inputs, .outputs = required_outputs});
             } else {
-                (*context.inouts).insert_or_assign(node.get(),
-                                                   DfgNodeInout{.inputs = DfgNodeInputs{.in = required_outputs.out}, .outputs = required_outputs});
+                context.inouts.insert_or_assign(node.get(),
+                                                DfgNodeInout{.inputs = DfgNodeInputs{.in = required_outputs.out}, .outputs = required_outputs});
             }
         }, node->cfg_node->node);
 
@@ -266,7 +266,7 @@ void analyse_dfg(Dfg &dfg, const DfgNodeOutputs &whole_program_outputs, DfgNodeU
     std::set<DfgNode *> visited;
     std::map<DfgNode *, DfgNodeInout> inouts;
 
-    for (const auto& in_node: end_node->in_nodes) {
+    for (const auto &in_node: end_node->in_nodes) {
         work_list.push_back(in_node.lock());
     }
     inouts.insert({end_node.get(), DfgNodeInout{
@@ -280,7 +280,7 @@ void analyse_dfg(Dfg &dfg, const DfgNodeOutputs &whole_program_outputs, DfgNodeU
             .unused_assignments = unused_assignments,
             .work_list = work_list,
             .visited = visited,
-            .inouts = &inouts,
+            .inouts = inouts,
     };
 
     analyse_dfg_impl(context);
