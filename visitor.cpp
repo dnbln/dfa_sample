@@ -5,8 +5,8 @@
 #include "visitor.hpp"
 
 void walk_expr(AstVisitor &visitor, const Expr &expr) {
-    std::visit([&](auto &&arg) {
-        using T = std::decay_t<decltype(arg)>;
+    std::visit([&]<typename T0>(T0 &&arg) {
+        using T = std::decay_t<T0>;
         if constexpr (std::is_same_v<T, Name>) {
             visitor.visit_name(arg);
         } else if constexpr (std::is_same_v<T, Constant>) {
@@ -46,8 +46,8 @@ void walk_assignment_stmt(AstVisitor &visitor, const AssignmentStmt &assignment_
 }
 
 void walk_statement(AstVisitor &visitor, const Stmt &stmt) {
-    std::visit([&](auto &&arg) {
-        using T = std::decay_t<decltype(arg)>;
+    std::visit([&]<typename T0>(T0 &&arg) {
+        using T = std::decay_t<T0>;
         if constexpr (std::is_same_v<T, AssignmentStmt>) {
             visitor.visit_assignment_stmt(arg);
         } else if constexpr (std::is_same_v<T, IfStmt>) {

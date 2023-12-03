@@ -6,7 +6,6 @@
 #define DFA_SAMPLE_DFG_HPP
 
 #include <vector>
-#include <set>
 #include "cfg.hpp"
 
 class DfgNode {
@@ -18,12 +17,12 @@ public:
     DfgNode() = default;
     DfgNode(const DfgNode &) = default;
     DfgNode(DfgNode &&) = default;
-    DfgNode(std::shared_ptr<CfgNode> cfg_node) : cfg_node(std::move(cfg_node)) {}
+    explicit DfgNode(std::shared_ptr<CfgNode> cfg_node) : cfg_node(std::move(cfg_node)) {}
     DfgNode(std::shared_ptr<CfgNode> cfg_node,
             std::vector<std::weak_ptr<DfgNode>> in_nodes,
             std::vector<std::weak_ptr<DfgNode>> out_nodes) :
-            cfg_node(std::move(cfg_node)), in_nodes(std::move(in_nodes)),
-            out_nodes(std::move(out_nodes)) {}
+            in_nodes(std::move(in_nodes)), out_nodes(std::move(out_nodes)),
+            cfg_node(std::move(cfg_node)) {}
 };
 
 class Dfg {

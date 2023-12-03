@@ -15,7 +15,7 @@ std::shared_ptr<Expr> parse_precedence_3(ParserState &state);
 Expr parse_expr_atom(ParserState &state) {
     state.lexer.skip_whitespace();
 
-    char c = state.lexer.peek();
+    const char c = state.lexer.peek();
     if (c == '(') {
         auto start = state.lexer.pos;
         state.lexer.next();
@@ -35,17 +35,18 @@ Expr parse_expr_atom(ParserState &state) {
                         .span = Span{start, state.lexer.pos}
                 }
         };
-    } else if (isdigit(c)) {
-        return Expr{
-                state.lexer.read_number()
-        };
-    } else if (isalpha(c)) {
-        return Expr{
-                state.lexer.read_name()
-        };
-    } else {
-        throw std::runtime_error("Unexpected character");
     }
+    if (isdigit(c)) {
+        return Expr{
+            state.lexer.read_number()
+        };
+    }
+    if (isalpha(c)) {
+        return Expr{
+            state.lexer.read_name()
+        };
+    }
+    throw std::runtime_error("Unexpected character");
 }
 
 std::shared_ptr<Expr> parse_precedence_1(ParserState &state) {
@@ -58,7 +59,7 @@ std::shared_ptr<Expr> parse_precedence_1(ParserState &state) {
 
     char c = state.lexer.peek();
     while (c == '*' || c == '/') {
-        auto start = state.lexer.pos;
+        const auto start = state.lexer.pos;
         state.lexer.next();
         std::shared_ptr<Expr> rhs = std::make_shared<Expr>(parse_expr_atom(state));
         lhs = std::make_shared<Expr>(Expr{
@@ -150,7 +151,7 @@ std::shared_ptr<Expr> parse_expr(ParserState &state) {
 
 StmtList parse_stmt_list(ParserState &state, bool error_on_end = true);
 
-Stmt parse_stmt(ParserState &state, Name name) {
+Stmt parse_stmt(ParserState &state, const Name& name) {
     if (name == "if") {
         return Stmt{
                 IfStmt{
@@ -158,33 +159,33 @@ Stmt parse_stmt(ParserState &state, Name name) {
                         std::make_shared<StmtList>(parse_stmt_list(state, false))
                 }
         };
-    } else if (name == "while") {
+    }
+    if (name == "while") {
         return Stmt{
-                WhileStmt{
-                        parse_expr(state),
-                        std::make_shared<StmtList>(parse_stmt_list(state, false))
-                }
-        };
-    } else {
-        state.lexer.skip_whitespace();
-        if (state.lexer.eof()) {
-            throw std::runtime_error("Unexpected end of input");
-        }
-        if (state.lexer.next() != '=') {
-            throw std::runtime_error("Expected '='");
-        }
-
-        return Stmt{
-                AssignmentStmt{
-                        name,
-                        parse_expr(state),
-                        Span{name.span.start, state.lexer.pre_ws_pos}
-                }
+            WhileStmt{
+                parse_expr(state),
+                std::make_shared<StmtList>(parse_stmt_list(state, false))
+            }
         };
     }
+    state.lexer.skip_whitespace();
+    if (state.lexer.eof()) {
+        throw std::runtime_error("Unexpected end of input");
+    }
+    if (state.lexer.next() != '=') {
+        throw std::runtime_error("Expected '='");
+    }
+
+    return Stmt{
+        AssignmentStmt{
+            name,
+            parse_expr(state),
+            Span{name.span.start, state.lexer.pre_ws_pos}
+        }
+    };
 }
 
-StmtList parse_stmt_list(ParserState &state, bool error_on_end) {
+StmtList parse_stmt_list(ParserState &state, const bool error_on_end) {
     StmtList stmt_list;
 
     state.lexer.skip_whitespace();

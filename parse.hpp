@@ -12,7 +12,7 @@ struct Lexer {
     size_t pos = 0;
     size_t pre_ws_pos = 0;
 
-    char peek() {
+    [[nodiscard]] char peek() const {
         return input[pos];
     }
 
@@ -20,7 +20,7 @@ struct Lexer {
         return input[pos++];
     }
 
-    bool eof() {
+    [[nodiscard]] bool eof() const {
         return pos >= input.size();
     }
 
@@ -37,7 +37,7 @@ struct Lexer {
     Name read_name() {
         skip_whitespace();
 
-        auto start = pos;
+        const auto start = pos;
         while (!eof() && isalnum(peek())) {
             next();
         }
@@ -51,11 +51,11 @@ struct Lexer {
     Constant read_number() {
         skip_whitespace();
 
-        auto start = pos;
+        const auto start = pos;
         while (!eof() && isdigit(peek())) {
             next();
         }
-        int val = std::stoi(std::string(input.substr(start, pos - start)));
+        const int val = std::stoi(std::string(input.substr(start, pos - start)));
         return Constant{
                 val,
                 Span{start, pos}

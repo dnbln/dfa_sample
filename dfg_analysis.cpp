@@ -3,6 +3,7 @@
 //
 
 #include "dfg_analysis.hpp"
+#include <map>
 
 struct InputsReadVisitor : public AstVisitor {
     std::set<char> inputs;
@@ -62,10 +63,10 @@ static std::shared_ptr<DfgNode>
 dfg_ptr_for_while_end_dummy_node(const Dfg &dfg, const std::shared_ptr<CfgNode> &while_node) {
     for (const auto &node: dfg.nodes) {
         bool result = std::visit(
-                [&](auto &&node) -> bool {
-                    using T = std::decay_t<decltype(node)>;
+                [&]<typename T0>(T0 &&node_data) -> bool {
+                    using T = std::decay_t<T0>;
                     if constexpr (std::is_same_v<T, std::shared_ptr<WhileRetDummyCfgNode>>) {
-                        auto v = node->while_node.value().lock();
+                        auto v = node_data->while_node.value().lock();
                         return v.get() == while_node.get();
                     } else {
                         return false;
@@ -120,25 +121,15 @@ compute_dfg_node_inputs_for_while(const std::shared_ptr<WhileCfgNode> &while_nod
     new_context.inouts.insert_or_assign(end_node.get(),
                                         DfgNodeInout{.inputs = required_inputs, .outputs = context.outputs});
 
-//    std::cout << "Before:\n";
-//    dbg_inouts(end_node, (*new_context.inouts)[end_node.get()]);
-
     analyse_dfg_impl(new_context);
     auto local = new_context.inouts[dfg_ptr_for_cfg(context.dfg, *while_node->body).get()];
     wl = init_wl;
     local.inputs.in.insert(visitor.inputs.begin(), visitor.inputs.end());
     vis = context.visited;
     new_context.inouts.insert_or_assign(end_node.get(), local);
-//    std::cout << "Before2:\n";
-//    dbg_inouts(end_node, (*new_context.inouts)[end_node.get()]);
     analyse_dfg_impl(new_context);
     local = new_context.inouts[dfg_ptr_for_cfg(context.dfg, *while_node->body).get()];
     local.inputs.in.insert(visitor.inputs.begin(), visitor.inputs.end());
-//    std::cout << "After:\n";
-//    for (const auto &c: local.inputs.in) {
-//        std::cout << c << " ";
-//    }
-//    std::cout << std::endl;
     return local.inputs;
 }
 
@@ -152,7 +143,7 @@ compute_dfg_node_inputs_for_if(const IfCfgNode &if_node, const DfgNodeOutputs &o
 }
 
 
-static std::shared_ptr<DfgNode> find_end_node(Dfg &dfg) {
+static std::shared_ptr<DfgNode> find_end_node(const Dfg &dfg) {
     // the end node is likelier to be at the end of the list
     for (const auto &node: std::ranges::reverse_view(dfg.nodes)) {
         if (std::holds_alternative<ExitCfgNode>(node->cfg_node->node)) {
@@ -260,8 +251,8 @@ static void analyse_dfg_impl(AnalyseDfgContext &context) {
     }
 }
 
-void analyse_dfg(Dfg &dfg, const DfgNodeOutputs &whole_program_outputs, DfgNodeUnusedAssignments &unused_assignments) {
-    std::shared_ptr<DfgNode> end_node = find_end_node(dfg);
+void analyse_dfg(const Dfg &dfg, const DfgNodeOutputs &whole_program_outputs, DfgNodeUnusedAssignments &unused_assignments) {
+    const std::shared_ptr<DfgNode> end_node = find_end_node(dfg);
     std::vector<std::shared_ptr<DfgNode>> work_list;
     std::set<DfgNode *> visited;
     std::map<DfgNode *, DfgNodeInout> inouts;

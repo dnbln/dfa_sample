@@ -27,8 +27,7 @@ void walk_stmt_list(AstVisitor &visitor, const StmtList &stmt_list);
 
 void walk_program(AstVisitor &visitor, const Program &program);
 
-class AstVisitor {
-public:
+struct AstVisitor {
     virtual ~AstVisitor() = default;
 
     virtual void visit_name(const Name &name) {
