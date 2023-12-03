@@ -1,24 +1,40 @@
 #include <algorithm>
+#include <fstream>
+#include <sstream>
+
 #include "parse.hpp"
 #include "dfg_analysis.hpp"
 #include "dfg.hpp"
 
-std::string SRC = R"(
-x = 0
-
+const char* SRC = R"(
 a = 1
-if x > 1
-    a = 2
-end
-if x < 2
-    a = 3
-end
-
 b = a
+x = 3
+y = 4
+
+while (b < 5)
+  z = x
+  b = b + 1
+  x = 9
+  y = 10
+end
 )";
 
-int main() {
-    ParserState state{Lexer{SRC}};
+int main(int argc, char* argv[]) {
+    std::string src;
+    if (argc > 1) {
+        std::ifstream fin(argv[1]);
+        if (!fin) {
+            std::cerr << "Failed to open file " << argv[1] << std::endl;
+            return 1;
+        }
+        std::stringstream buffer;
+        buffer << fin.rdbuf();
+        src = buffer.str();
+    } else {
+        src = SRC;
+    }
+    ParserState state{Lexer{src}};
     const Program p = parse_program(state);
     const Cfg cfg = build_cfg(p);
 //    dbg_cfg(cfg);
@@ -34,10 +50,10 @@ int main() {
                           return a->span.start < b->span.start;
                       });
     for (const auto &assignment: unused_assignments.assignments) {
-        std::cout << "Unused assignment " << assignment->name.name << " at " << assignment->span.start << ".."
+        std::cout << "Unused assignment to " << assignment->name.name << " at " << assignment->span.start << ".."
                   << assignment->span.end
                   << std::endl
-                  << SRC.substr(assignment->span.start, assignment->span.end - assignment->span.start)
+                  << src.substr(assignment->span.start, assignment->span.end - assignment->span.start)
                   << std::endl;
     }
     return 0;
