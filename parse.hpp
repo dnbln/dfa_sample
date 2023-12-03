@@ -25,6 +25,9 @@ struct Lexer {
     }
 
     void skip_whitespace() {
+        if (eof() || !isspace(peek())) {
+            return;
+        }
         pre_ws_pos = pos;
         while (!eof() && isspace(peek())) {
             next();

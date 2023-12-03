@@ -72,7 +72,7 @@ dfg_ptr_for_while_end_dummy_node(const Dfg &dfg, const std::shared_ptr<CfgNode> 
                     }
                 }, node->cfg_node->node);
         if (result) {
-            return dfg_ptr_for_cfg(dfg, *node->cfg_node);
+            return node;
         }
     }
     throw std::runtime_error("Could not find dfg node for while end dummy node");
